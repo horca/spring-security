@@ -177,10 +177,12 @@ public final class OpenSamlAuthenticationProvider implements AuthenticationProvi
 			Response samlResponse = getSaml2Response(token);
 			Assertion assertion = validateSaml2Response(token, token.getRecipientUri(), samlResponse);
 			String username = getUsername(token, assertion);
-			return new Saml2Authentication(
+			Saml2Authentication saml2Authentication = new Saml2Authentication(
 					() -> username, token.getSaml2Response(),
 					this.authoritiesMapper.mapAuthorities(getAssertionAuthorities(assertion))
 			);
+			saml2Authentication.setDetails(authentication.getDetails());
+			return saml2Authentication;
 		} catch (Saml2AuthenticationException e) {
 			throw e;
 		} catch (Exception e) {

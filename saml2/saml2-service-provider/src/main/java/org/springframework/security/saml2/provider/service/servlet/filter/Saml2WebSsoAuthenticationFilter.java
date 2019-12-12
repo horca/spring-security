@@ -86,6 +86,7 @@ public class Saml2WebSsoAuthenticationFilter extends AbstractAuthenticationProce
 				localSpEntityId,
 				rp.getCredentials()
 		);
+		authentication.setDetails(authenticationDetailsSource.buildDetails(request));
 		return getAuthenticationManager().authenticate(authentication);
 	}
 

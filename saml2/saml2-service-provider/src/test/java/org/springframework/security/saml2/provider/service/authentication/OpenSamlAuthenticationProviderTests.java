@@ -41,6 +41,7 @@ import static org.springframework.security.saml2.provider.service.authentication
 import static org.springframework.security.saml2.provider.service.authentication.Saml2CryptoTestSupport.signXmlObject;
 import static org.springframework.security.saml2.provider.service.authentication.TestSaml2X509Credentials.assertingPartyCredentials;
 import static org.springframework.security.saml2.provider.service.authentication.TestSaml2X509Credentials.relyingPartyCredentials;
+import static org.springframework.test.util.AssertionErrors.assertEquals;
 import static org.springframework.test.util.AssertionErrors.assertTrue;
 import static org.springframework.util.StringUtils.hasText;
 
@@ -171,7 +172,7 @@ public class OpenSamlAuthenticationProviderTests {
 	}
 
 	@Test
-	public void authenticateWhenMissingSubjectThenThrowAuthenticationException()  {
+	public void authenticateWhenMissingSubjectThenThrowAuthenticationException() {
 		Response response = response(recipientUri, idpEntityId);
 		Assertion assertion = defaultAssertion();
 		assertion.setSubject(null);
@@ -346,6 +347,26 @@ public class OpenSamlAuthenticationProviderTests {
 		provider.authenticate(token);
 	}
 
+	@Test
+	public void authenticateAlsoPassAlongTheAuthenticationDetailsFromAuthenticationFilter() {
+		Response response = response(recipientUri, idpEntityId);
+		Assertion assertion = defaultAssertion();
+		signXmlObject(
+				assertion,
+				assertingPartyCredentials(),
+				recipientEntityId
+		);
+		EncryptedAssertion encryptedAssertion = encryptAssertion(assertion, assertingPartyCredentials());
+		response.getEncryptedAssertions().add(encryptedAssertion);
+		token = responseXml(response, idpEntityId);
+		token.setDetails("details");
+		Authentication authentication = provider.authenticate(token);
+		assertEquals(
+				OpenSamlAuthenticationProvider.class + " should pass authentication details along",
+				"details", authentication.getDetails()
+		);
+	}
+
 	private Assertion defaultAssertion() {
 		return assertion(
 				username,
@@ -400,7 +421,7 @@ public class OpenSamlAuthenticationProviderTests {
 
 			@Override
 			public void describeTo(Description desc) {
-				String excepting = "Saml2AuthenticationException[code="+code+"; description="+description+"]";
+				String excepting = "Saml2AuthenticationException[code=" + code + "; description=" + description + "]";
 				desc.appendText(excepting);
 
 			}

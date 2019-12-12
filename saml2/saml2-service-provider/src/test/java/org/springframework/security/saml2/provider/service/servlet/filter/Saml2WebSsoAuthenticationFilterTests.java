@@ -23,16 +23,24 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration;
 import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistrationRepository;
 
 import javax.servlet.http.HttpServletResponse;
+import java.util.Base64;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 public class Saml2WebSsoAuthenticationFilterTests {
 
 	private Saml2WebSsoAuthenticationFilter filter;
 	private RelyingPartyRegistrationRepository repository = mock(RelyingPartyRegistrationRepository.class);
+	private AuthenticationManager manager = mock(AuthenticationManager.class);
 	private MockHttpServletRequest request = new MockHttpServletRequest();
 	private HttpServletResponse response = new MockHttpServletResponse();
 
@@ -42,8 +50,9 @@ public class Saml2WebSsoAuthenticationFilterTests {
 	@Before
 	public void setup() {
 		filter = new Saml2WebSsoAuthenticationFilter(repository);
+		filter.setAuthenticationManager(manager);
 		request.setPathInfo("/login/saml2/sso/idp-registration-id");
-		request.setParameter("SAMLResponse", "xml-data-goes-here");
+		request.setParameter("SAMLResponse", new String(Base64.getEncoder().encode("xml-data".getBytes())));
 	}
 
 	@Test
@@ -69,6 +78,14 @@ public class Saml2WebSsoAuthenticationFilterTests {
 		request.setPathInfo("/some/other/path/idp-registration-id");
 		request.setParameter("SAMLResponse", "xml-data-goes-here");
 		Assert.assertTrue(filter.requiresAuthentication(request, response));
+	}
+
+	@Test
+	public void attemptAuthenticationAlsoSetsAuthenticationDetails() {
+		given(repository.findByRegistrationId(any())).willReturn(mock(RelyingPartyRegistration.class));
+		filter.setAuthenticationDetailsSource((request) -> "details");
+		filter.attemptAuthentication(request, response);
+		verify(manager).authenticate(argThat(argument -> argument.getDetails() == "details"));
 	}
 
 
